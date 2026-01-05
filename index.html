@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ดอกเบี้ยและมูลค่าของเงิน</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root { --primary: #1a5276; --secondary: #21618c; --accent: #27ae60; --bg: #f4f7f6; --text: #2c3e50; }
+        body { font-family: 'Sarabun', sans-serif; background: var(--bg); margin: 0; display: flex; color: var(--text); }
+        
+        /* Sidebar Design */
+        .sidebar { width: 320px; background: var(--primary); color: white; height: 100vh; position: fixed; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        .sidebar h2 { font-size: 1.1rem; border-bottom: 1px solid #5499c7; padding-bottom: 10px; margin-top: 0; }
+        .menu-group { margin-bottom: 20px; }
+        .menu-title { font-weight: bold; display: block; padding: 10px 5px; color: #aed6f1; font-size: 0.9rem; }
+        .sidebar button { width: 100%; text-align: left; padding: 12px 15px; background: none; border: none; color: white; cursor: pointer; border-radius: 5px; font-size: 0.9rem; transition: 0.3s; }
+        .sidebar button:hover { background: var(--secondary); }
+        .sidebar button.active { background: var(--accent); }
+
+        /* Content Area */
+        .main-content { margin-left: 320px; padding: 40px; width: 100%; box-sizing: border-box; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 900px; margin: auto; }
+        
+        /* Knowledge Base Style */
+        .knowledge-base { background: #eaf2f8; border-left: 5px solid var(--secondary); padding: 20px; margin-bottom: 30px; line-height: 1.6; font-size: 0.95rem; }
+        .formula-box { background: white; padding: 10px; border: 1px dashed var(--secondary); text-align: center; font-weight: bold; margin: 10px 0; }
+        
+        /* Calculator Grid */
+        .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #d5dbdb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
+        
+        .action-btn { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: bold; }
+        .action-btn:hover { background: #1e8449; }
+
+        /* Braille Display */
+        .braille-area { background: #17202a; color: #58d68d; padding: 25px; border-radius: 10px; font-size: 35px; margin-top: 20px; min-height: 60px; word-break: break-all; }
+        
+        .result-box { margin-top: 20px; padding: 15px; background: #d4efdf; border-radius: 6px; font-weight: bold; color: #145a32; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>ดอกเบี้ยและมูลค่าของเงิน</h2>
+    
+    <div class="menu-group">
+        <span class="menu-title">1: ดอกเบี้ย</span>
+        <button onclick="showPage('SimpleInterest', this)" id="defaultOpen">1.1 ดอกเบี้ยคงต้น</button>
+        <button onclick="showPage('CompoundInterest', this)">1.2 ดอกเบี้ยทบต้น</button>
+    </div>
+
+    <div class="menu-group">
+        <span class="menu-title">2: ค่ารายงวด</span>
+        <button onclick="showPage('AnnuityFlat', this)">2.1 การคิดดอกเบี้ยเงินกู้แบบเงินต้นคงที่</button>
+        <button onclick="showPage('AnnuityEffective', this)">2.2 การคิดดอกเบี้ยเงินกู้แบบลดต้นลดดอก</button>
+    </div>
+
+    <div class="menu-group">
+        <span class="menu-title">3: มูลค่าของเงิน</span>
+        <button onclick="showPage('MoneyValue', this)">มูลค่าอนาคตและมูลค่าปัจจุบัน</button>
+    </div>
+
+    <div class="menu-group">
+        <span class="menu-title">4: เครื่องมือพิเศษ</span>
+        <button onclick="showPage('BrailleTool', this)">แปลงโจทย์เป็นอักษรเบรลล์</button>
+    </div>
+</div>
+
+<div class="main-content">
+    <div id="pageContent" class="card">
+        </div>
+    <div id="resultBox" class="result-box"></div>
+</div>
+
+<script>
+    // ฐานข้อมูล
+    const contentData = {
+        'SimpleInterest': {
+            title: '1.1 ดอกเบี้ยคงต้น',
+            info: `<strong><u>ดอกเบี้ยคงต้น</strong></u> คือ ดอกเบี้ยที่กำหนดให้เงินต้นมีค่าคงที่ตลอดระยะเวลาของการฝากเงินหรือการกู้ยืมเงิน 
+            ซึ่งดอกเบี้ยจะมีค่าเท่ากันทุกปี <br>เช่น การฝากเงินในบัญชีประเภทออมทรัพย์ ธนาคารคิดอัตราดอกเบี้ยให้ลูกค้าร้อยละ 0.5 ต่อปี ซึ่งในการคำนวณดอกเบี้ย จะประกอบด้วย
+     <br>   <strong><u>เงินต้น</strong></u> คือ จำนวนเงินลงทุนหรือจำนวนเงินที่ให้กู้
+     <br>   <strong><u>ดอกเบี้ย</strong></u> คือ ค่าตอบแทนที่บุคคลหนึ่งต้องใช้ให้แก่บุคคลอีกคนหนึ่งเพื่อทดแทนการยืมเมื่อครบกำหนดเวลา
+     <br>   <strong><u>เงินรวม</strong></u> คือ จำนวนเงินต้นรวมกับดอกเบี้ย
+     <br>   <strong>การคำนวณดอกเบี้ย</strong> สามารถคำนวณได้ดังนี้
+     <br>   จาก	ดอกเบี้ย = เงินต้น × อัตราดอกเบี้ยต่อปี × ระยะเวลา (ปี)
+     <br>   จะได้ว่า I = Prt
+     <br>   และ	เงินรวม = P + I
+     <br>   จากทั้งสองสมการจะได้
+                   <div class="formula-box"><math display="inline" style="font-size: 30px;">
+    <mi>S</mi>
+    <mo>=</mo>
+    <mi>P</mi>
+    <mo>+</mo>
+    <mi>P</mi>
+    <mi>r</mi>
+    <mi>t</mi>
+  </math></div>
+<p align="center">หรือ
+                   <div class="formula-box"><math display="inline" style="font-size: 30px;">
+    <mi>S</mi>
+    <mo>=</mo>
+    <mi>P</mi>
+      <mrow>
+        <mo>(</mo>
+        <mn>1</mn>
+        <mo>+</mo>
+        <mi>r</mi>
+        <mi>t</mi>
+        <mo>)</mo>
+      </mrow>
+  </math></div>
+    <br>    การคำนวณดอกเบี้ยคงต้น มีข้อสังเกตที่ควรทราบ ดังนี้
+    <br>    1. ค่า r เป็นอัตราดอกเบี้ยร้อยละ ดังนั้นการแทนค่าในสูตรจะต้องหารด้วย 100 เสมอ 
+    <br>    เช่น ถ้ากำหนดอัตราดอกเบี้ย 15% จะต้องแทนค่าเป็น 15/100 หรือ 0.15
+    <br>    2. ค่า r และ t จะต้องสัมพันธ์กัน เช่น ถ้า r คืออัตราดอกเบี้ยต่อปี ค่า t ต้องทำให้มีหน่วยเป็นปี
+            หรือถ้า r คืออัตราดอกเบี้ยต่อเดือน <br>ค่า t ต้องทำให้มีหน่วยเป็นเดือน ดังนี้
+    <br>    - ถ้า t มีหน่วยเป็นเดือน สามารถทำให้มีหน่วยเป็นปี จะได้ <br> <strong>t</strong> = <math display="inline" style="font-size: 20px;">
+  <mfrac>
+    <mi><strong>จำนวนเดือน</strong></mi>
+    <mn><strong>12</strong></mn>
+  </mfrac>
+</math>
+
+    <br>    </strong>- ถ้า t มีหน่วยเป็นวัน สามารถทำให้มีหน่วยเป็นปี จะได้ <br> <strong>t</strong> = <math display="inline" style="font-size: 20px;">
+  <mfrac>
+    <mi><strong>จำนวนวัน</strong></mi>
+    <mn><strong>จำนวนวันในปีนั้น</strong></mn>
+  </mfrac>
+</math> `,
+            inputs: ['S (เงินรวม)', 'P (เงินต้น)', 'r (อัตราดอกเบี้ย % ต่อปี)', 't (ระยะเวลาต่อปี)'],
+            ids: ['si_s', 'si_p', 'si_r', 'si_t'],
+            calcFunc: 'solveSimpleInterest'
+        },
+        'CompoundInterest': {
+            title: '1.2 ดอกเบี้ยทบต้น',
+            info: `<strong><u>ดอกเบี้ยทบต้น</strong></u> คือ ดอกเบี้ยที่กำหนดให้มีการนำเอาดอกเบี้ยไปรวมกับเงินต้น เพื่อนำมาเป็นเงินต้นของงวดถัดไป กล่าวคือ 
+    <br>    ถ้ามีการคิดดอกเบี้ยทบต้นไปเรื่อย ๆ จะทำให้เงินต้นของงวดต่อไปมีจำนวนมากขึ้น
+    <br>    <strong><u>คาบเวลาหรืองวด</strong></u> คือ ระยะเวลาของการคิดดอกเบี้ย ซึ่งในวงการธุรกิจประเภทต่าง ๆ 
+            นิยมคิดดอกเบี้ยทบต้นต่อช่วงเวลาที่แตกต่างกัน 
+    <br>    เช่น อาจจะคิดดอกเบี้ยทบต้นเป็นปี หรือต่อครึ่งปี หรือต่อเดือน จนไปถึง
+            ต่อวันก็ได้ <br> ดังนั้นอัตราดอกเบี้ยที่ใช้คิดดอกเบี้ยทบต้นจะเป็น <strong>อัตราดอกเบี้ยต่องวด</strong>
+    <p>     ดังนั้น ได้สูตรการหาเงินรวมเมื่อคิดดอกเบี้ยทบต้นทุกปี (ปีละครั้ง) เมื่อสิ้นงวดที่ n คือ
+                   <div class="formula-box"><math display="inline" style="font-size: 30px;">
+    <mi>S</mi>
+    <mo>=</mo>
+    <mi>P</mi>
+    <msup>
+      <mrow>
+        <mo>(</mo>
+        <mn>1</mn>
+        <mo>+</mo>
+        <mi>r</mi>
+        <mo>)</mo>
+      </mrow>
+      <mi>n</mi>
+    </msup>
+  </math></div>
+    <p align="left">และ ได้สูตรการหาเงินรวมเมื่อคิดดอกเบี้ยทบต้นต่อช่วงเวลาที่แตกต่างกัน เมื่อสิ้นงวดที่ n คือ
+                   <div class="formula-box"><math display="inline" style="font-size: 30px;">
+    <mi>S</mi>
+    <mo>=</mo>
+    <mi>P</mi>
+    <msup>
+      <mrow>
+        <mo>(</mo>
+        <mn>1</mn>
+        <mo>+</mo>
+        <mfrac>
+          <mi>r</mi>
+          <mi>n</mi>
+        </mfrac>
+        <mo>)</mo>
+      </mrow>
+      <mrow>
+        <mi>n</mi>
+        <mi>t</mi>
+      </mrow>
+    </msup>
+  </math></div>
+            <br>    เมื่อ 
+            <br>    S แทน จำนวนเงินรวมทั้งหมดเมื่อสิ้นงวดที่ n
+            <br>    P แทน จำนวนเงินต้น
+            <br>    r แทน อัตราดอกเบี้ยต่องวด
+            <br>    โดยที่ r = <math display="inline" style="font-size: 20px;">
+  <mfrac>
+    <mi>i</mi>
+    <mn>100</mn>
+  </mfrac>
+</math> เมื่อได้รับอัตราดอกเบี้ย i % ต่อปี
+            <br>    n แทน จำนวนงวด`,
+            inputs: ['S (เงินรวม)', 'P (เงินต้น)', 'r (อัตราดอกเบี้ยต่องวด)', 'n (จำนวนงวด)'],
+            ids: ['ci_s', 'ci_p', 'ci_r', 'ci_n'],
+            calcFunc: 'solveCompoundInterest'
+        },
+        'AnnuityFlat': {
+            title: '2.1 การคิดดอกเบี้ยเงินกู้แบบเงินต้นคงที่',
+            info: `<strong><u>การคิดดอกเบี้ยเงินกู้แบบเงินต้นคงที่</strong></u> จะคำนวณดอกเบี้ยจากเงินต้นทั้งก้อนที่คงที่ตลอดอายุสัญญา แม้ว่าลูกค้าจะได้ทยอยผ่อนชำระเงินต้น
+            <br>    บางส่วนไปเรื่อย ๆ แล้วก็ตาม โดยมีวิธีการคำนวณดังต่อไปนี้
+            <br>    จากความสัมพันธ์ดอกเบี้ยทั้งหมด = เงินต้น × อัตราดอกเบี้ยต่อปี × ระยะเวลา (ปี)
+	        <br>    I =	Prt
+            <br>    เมื่อเราต้องการผ่อนสินค้าหรือส่งเป็นงวด จะได้ว่า
+            <br>    จำนวนเงินที่ต้องชำระในแต่ละงวด = <math display="inline" style="font-size: 20px;">
+  <mfrac>
+    <mi>เงินต้น + ดอกเบี้ยทั้งหมด</mi>
+    <mn>จำนวนงวดที่ต้องผ่อนชำระทั้งหมด</mn>
+  </mfrac>
+</math>
+            <p align="left"> หรือ
+                   <div class="formula-box"><math display="inline" style="font-size: 30px;">
+    <mi>PMT</mi>
+    <mo>=</mo>
+    <mfrac>
+      <mrow>
+        <mi>P</mi>
+        <mo>(</mo>
+        <mn>1</mn>
+        <mo>+</mo>
+        <mi>r</mi>
+        <mi>t</mi>
+        <mo>)</mo>
+      </mrow>
+      <mi>n</mi>
+    </mfrac>
+  </math></div>`,
+            inputs: ['PMT (ยอดชำระต่องวด)', 'P (ยอดเงินต้น)', 'r (อัตราดอกเบี้ยต่องวด)', 't (ระยะเวลาต่อปี)', 'n (จำนวนงวดทั้งหมด)'],
+            ids: ['af_pmt', 'af_p', 'af_r', 'af_t', 'af_n'],
+            calcFunc: 'solveAnnuityFlat'
+        },
+        'AnnuityEffective': {
+            title: '2.2 การคิดดอกเบี้ยเงินกู้แบบลดต้นลดดอก',
+            info: `<strong><u>การคิดดอกเบี้ยเงินกู้แบบลดต้นลดดอก</strong></u> ใช้คำนวณดอกเบี้ยของสินเชื่อเกือบทุกประเภท 
+                    เช่น สินเชื่อเพื่อที่อยู่อาศัย โดยคิดดอกเบี้ยจากเงินต้นคงเหลือในแต่ละงวด ใช้สูตรการคำนวณหาดอกเบี้ยในแต่ละงวด
+                    เช่นเดียวกับการคิดดอกเบี้ยเงินกู้แบบเงินต้นคงที่ แต่เงินที่ชำระในแต่ละงวด ส่วนที่เกินหรือดอกเบี้ยในงวดนั้น ๆ
+                    จะไปลดเงินต้นที่ใช้คิดดอกเบี้ยในงวดต่อไป
+            <p align="left">     ดังนั้น ยอด(ผ่อน)ชำระในแต่ละงวด กรณีกำหนดให้ชำระหนี้งวดละเท่า ๆ กัน สามารถคำนวณได้จากสูตร คือ
+                   <div class="formula-box"><math display="inline" style="font-size: 30px;">
+    <mi>PMT</mi>
+    <mo>=</mo>
+    <mfrac>
+      <mi>P</mi>
+      <mrow>
+        <mo>{</mo>
+        <mfrac>
+          <mrow>
+            <mn>1</mn>
+            <mo>-</mo>
+            <mfrac>
+              <mn>1</mn>
+              <msup>
+                <mrow>
+                  <mo>(</mo>
+                  <mn>1</mn>
+                  <mo>+</mo>
+                  <mi>r</mi>
+                  <mo>)</mo>
+                </mrow>
+                <mi>n</mi>
+              </msup>
+            </mfrac>
+          </mrow>
+          <mi>r</mi>
+        </mfrac>
+        <mo>}</mo>
+      </mrow>
+    </mfrac>
+    <mo>=</mo>
+    <mfrac>
+      <mrow>
+        <mi>P</mi>
+        <mo>&#x22C5;</mo>
+        <mi>r</mi>
+        <msup>
+          <mrow>
+            <mo>(</mo>
+            <mn>1</mn>
+            <mo>+</mo>
+            <mi>r</mi>
+            <mo>)</mo>
+          </mrow>
+          <mi>n</mi>
+        </msup>
+      </mrow>
+      <mrow>
+        <msup>
+          <mrow>
+            <mo>(</mo>
+            <mn>1</mn>
+            <mo>+</mo>
+            <mi>r</mi>
+            <mo>)</mo>
+          </mrow>
+          <mi>n</mi>
+        </msup>
+        <mo>-</mo>
+        <mn>1</mn>
+      </mrow>
+    </mfrac>
+  </math></div>
+            <br>    โดยที่	
+            <br>    PMT	คือ ยอดชำระต่องวด
+	        <br>    P	คือ ยอดเงินต้น
+	        <br>    r	คือ อัตราดอกเบี้ยต่องวด
+	        <br>    n	คือ จำนวนงวดที่ผ่อนชำระทั้งหมด  `,
+            inputs: ['PMT (ยอดชำระต่องวด)', 'P (ยอดเงินต้น)', 'r (อัตราดอกเบี้ยต่องวด)', 'n (จำนวนงวดทั้งหมด)'],
+            ids: ['ae_pmt', 'ae_p', 'ae_r', 'ae_n'],
+            calcFunc: 'solveAnnuityEffective'
+        },
+        'MoneyValue': {
+            title: 'มูลค่าอนาคตและมูลค่าปัจจุบัน',
+            info: `<strong><u>มูลค่าอนาคต</strong></u> คือ มูลค่าของเงินในอนาคตภายใต้ช่วงเวลา หรืออัตราผลตอบแทนที่ได้กำหนดไว้
+                    โดยมีกระบวนการเริ่มจากเงินจำนวนหนึ่ง
+            <br>    ณ ปัจจุบัน มีค่าเพิ่มมากขึ้นในอนาคต จะเรียกว่า การทบต้นของค่าเงินด้วยดอกเบี้ยที่ได้รับ โดยสามารถคำนวณได้จาก
+            <div class="formula-box"><math display="inline" style="font-size: 30px;">
+    <mi>FV</mi>
+    <mo>=</mo>
+    <mi>PV</mi>
+    <msup>
+      <mrow>
+        <mo>(</mo>
+        <mn>1</mn>
+        <mo>+</mo>
+        <mi>r</mi>
+        <mo>)</mo>
+      </mrow>
+      <mi>n</mi>
+    </msup>
+  </math></div>
+            <br>    เมื่อ 
+            <br>    FV  แทน มูลค่ารวมในอนาคต
+            <br>    PV	แทน มูลค่าปัจจุบันของเงินจำนวนหนึ่ง
+		    <br>    r   แทน อัตราดอกเบี้ยต่องวด
+            <br>    โดยที่ r = <math display="inline" style="font-size: 20px;">
+  <mfrac>
+    <mi>i</mi>
+    <mn>100</mn>
+  </mfrac>
+</math> เมื่อได้รับอัตราดอกเบี้ย i % ต่อปี
+            <br>    n	แทน จำนวนงวดเวลา
+            <p align="left">     <strong><u>มูลค่าปัจจุบัน</strong></u> คือ มูลค่าของเงิน ณ ปัจจุบัน ที่เกิดขึ้นในอนาคตและมีค่าเท่ากับจำนวนเงินจำนวนหนึ่ง ณ ปัจจุบัน 
+                    ซึ่งการหาค่าเงินปัจจุบัน <br>มีกระบวนการคิดตรงกันข้ามกับการคิดทบต้น ซึ่งจะเป็นการคำนวณเอาดอกเบี้ยออกไปเพื่อให้เหลือเงินเริ่มต้น 
+                    จะเรียกว่า การคิดลดค่าเงิน <br>โดยสามารถคำนวณได้จาก
+            <div class="formula-box"><math display="inline" style="font-size: 30px; font-family: 'Times New Roman', serif;">
+  <mi>PV</mi>
+  <mo>=</mo>
+  <mfrac>
+    <mi>FV</mi>
+    <msup>
+      <mrow>
+        <mo>(</mo>
+        <mn>1</mn>
+        <mo>+</mo>
+        <mi>r</mi>
+        <mo>)</mo>
+      </mrow>
+      <mi>n</mi>
+    </msup>
+  </mfrac>
+  <mo>=</mo>
+  <mi>FV</mi>
+  <msup>
+    <mrow>
+      <mo>(</mo>
+      <mn>1</mn>
+      <mo>+</mo>
+      <mi>r</mi>
+      <mo>)</mo>
+    </mrow>
+    <mrow>
+      <mo>-</mo>
+      <mi>n</mi>
+    </mrow>
+  </msup>
+</math></div>`,
+            inputs: ['FV (มูลค่าอนาคต)', 'PV (มูลค่าปัจจุบัน)', 'r (อัตราดอกเบี้ยต่องวด)', 'n (จำนวนงวดเวลา)'],
+            ids: ['mv_fv', 'mv_pv', 'mv_r', 'mv_n'],
+            calcFunc: 'solveMoneyValue'
+        }
+    };
+
+    function showPage(pageKey, btn) {
+        // จัดการ UI
+        document.querySelectorAll('.sidebar button').forEach(b => b.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+        document.getElementById('resultBox').style.display = 'none';
+
+        if(pageKey === 'BrailleTool') {
+            renderBrailleTool();
+            return;
+        }
+
+        const data = contentData[pageKey];
+        let inputHtml = '';
+        data.inputs.forEach((label, index) => {
+            inputHtml += `<div class="input-group"><label>${label}</label><input type="number" 
+            id="${data.ids[index]}" placeholder="เว้นว่างช่องที่ต้องการหา"></div>`;
+        });
+
+        document.getElementById('pageContent').innerHTML = `
+            <h3>${data.title}</h3>
+            <div class="knowledge-base">${data.info}</div>
+            <div class="calc-grid">${inputHtml}</div>
+            <button class="action-btn" onclick="${data.calcFunc}()">คำนวณ</button>
+        `;
+    }
+
+    // --- LOGIC CALCULATORS (The Flexible Calculator) ---
+
+    function solveSimpleInterest() {
+        let s = parseFloat(document.getElementById('si_s').value), p = parseFloat(document.getElementById('si_p').value);
+        let r_input = document.getElementById('si_r').value;
+        let t = parseFloat(document.getElementById('si_t').value);
+        let res = "";
+
+        if(r_input === "") { // กรณีหา r: r = ((S/P) - 1) / t
+            let r_val = ((s / p) - 1) / t;
+            res = `r = ${(r_val * 100).toFixed(2)}% ต่อปี`;
+        } else if(isNaN(s)) {
+            res = `S = ${(p * (1 + (parseFloat(r_input)/100) * t)).toFixed(2)}`;
+        } else if(isNaN(p)) {
+            res = `P = ${(s / (1 + (parseFloat(r_input)/100) * t)).toFixed(2)}`;
+        } else if(isNaN(t)) {
+            res = `t = ${((s / p - 1) / (parseFloat(r_input)/100)).toFixed(2)} ปี`;
+        }
+        showResult(res);
+    }
+
+    function solveCompoundInterest() {
+        let s = parseFloat(document.getElementById('ci_s').value), p = parseFloat(document.getElementById('ci_p').value);
+        let r_input = document.getElementById('ci_r').value;
+        let n = parseFloat(document.getElementById('ci_n').value);
+        let res = "";
+
+        if(r_input === "") { // กรณีหา r: r = (S/P)^(1/n) - 1
+            let r_val = Math.pow((s / p), (1 / n)) - 1;
+            res = `r = ${(r_val * 100).toFixed(2)}% ต่องวด`;
+        } else if(isNaN(s)) {
+            res = `S = ${(p * Math.pow(1 + (parseFloat(r_input)/100), n)).toFixed(2)}`;
+        } else if(isNaN(p)) {
+            res = `P = ${(s / Math.pow(1 + (parseFloat(r_input)/100), n)).toFixed(2)}`;
+        } else if(isNaN(n)) {
+            res = `n = ${(Math.log(s / p) / Math.log(1 + (parseFloat(r_input)/100))).toFixed(2)} งวด`;
+        }
+        showResult(res);
+    }
+
+    function solveAnnuityFlat() {
+    let pmt = parseFloat(document.getElementById('af_pmt').value);
+    let p = parseFloat(document.getElementById('af_p').value);
+    let r = parseFloat(document.getElementById('af_r').value) / 100;
+    let t = parseFloat(document.getElementById('af_t').value);
+    let n = parseFloat(document.getElementById('af_n').value);
+    let res = "";
+
+    if (isNaN(pmt)) {
+        // หา PMT = P(1 + rt) / n
+        res = `PMT = ${(p * (1 + r * t) / n).toFixed(2)}`;
+    } else if (isNaN(p)) {
+        // หา P = (PMT * n) / (1 + rt)
+        res = `P = ${(pmt * n / (1 + r * t)).toFixed(2)}`;
+    } else if (isNaN(r)) {
+        // หา r = ((PMT * n / p) - 1) / t
+        let r_val = ((pmt * n / p) - 1) / t;
+        res = `r = ${(r_val * 100).toFixed(2)}% ต่อปี`;
+    } else if (isNaN(t)) {
+        // หา t = ((PMT * n / p) - 1) / r
+        res = `t = ${(((pmt * n / p) - 1) / r).toFixed(2)} ปี`;
+    } else if (isNaN(n)) {
+        // หา n = P(1 + rt) / PMT
+        res = `n = ${(p * (1 + r * t) / pmt).toFixed(2)} งวด`;
+    }
+    showResult(res);
+}
+
+    function solveAnnuityEffective() {
+    let pmt = parseFloat(document.getElementById('ae_pmt').value);
+    let p = parseFloat(document.getElementById('ae_p').value);
+    let r_input = document.getElementById('ae_r').value; // รับค่าเป็น string เพื่อเช็คค่าว่าง
+    let n = parseFloat(document.getElementById('ae_n').value);
+    let res = "";
+
+    // กรณีหาค่า r (อัตราดอกเบี้ย) เมื่อช่องว่างหรือไม่ได้กรอก
+    if (r_input === "" && !isNaN(pmt) && !isNaN(p) && !isNaN(n)) {
+        let r = 0.1 / 12; // ค่าเริ่มต้นสำหรับการสุ่ม (0.1 หรือ 10% ต่อปี)
+        for (let i = 0; i < 20; i++) { // วนซ้ำ 20 ครั้งเพื่อให้ได้ค่าที่แม่นยำสูง
+            let powN = Math.pow(1 + r, n);
+            let f = (p * r * powN) / (powN - 1) - pmt; // สมการ f(r) = 0
+            // อนุพันธ์ของฟังก์ชัน (Derivative) เพื่อใช้ใน Newton-Raphson
+            let df = p * (Math.pow(r + 1, n) / (Math.pow(r + 1, n) - 1) - (n * r * Math.pow(r + 1, n - 1)) 
+            / Math.pow(Math.pow(r + 1, n) - 1, 2));
+            r = r - f / df;
+        }
+        res = `r = ${(r * 100).toFixed(4)}% ต่องวด (${(r * 12 * 100).toFixed(2)}% ต่อปี)`;
+
+    } else if (isNaN(pmt)) {
+        // หา PMT (ยอดผ่อนรายงวด)
+        let r = parseFloat(r_input) / 100;
+        let top = p * r * Math.pow(1 + r, n);
+        let bottom = Math.pow(1 + r, n) - 1;
+        res = `PMT = ${(top / bottom).toFixed(2)}`;
+
+    } else if (isNaN(p)) {
+        // หา P (วงเงินกู้/เงินต้น)
+        let r = parseFloat(r_input) / 100;
+        let top = pmt * (Math.pow(1 + r, n) - 1);
+        let bottom = r * Math.pow(1 + r, n);
+        res = `P = ${(top / bottom).toFixed(2)}`;
+
+    } else if (isNaN(n)) {
+        // หา n (จำนวนงวด)
+        let r = parseFloat(r_input) / 100;
+        if (pmt <= p * r) {
+            res = "Error: ยอดผ่อนต้องมากกว่าดอกเบี้ยต่องวด";
+        } else {
+            let n_val = Math.log(pmt / (pmt - p * r)) / Math.log(1 + r);
+            res = `n = ${Math.ceil(n_val)} งวด (ประมาณ ${n_val.toFixed(2)})`;
+        }
+    }
+
+    showResult(res || "กรุณากรอกข้อมูลให้ครบถ้วนเพื่อหาค่าตัวแปรที่ว่าง");
+}
+
+
+    function solveMoneyValue() {
+    // รับค่าจาก Input (ดึงค่าดิบของ r มาเช็คค่าว่างก่อน)
+    let fv = parseFloat(document.getElementById('mv_fv').value);
+    let pv = parseFloat(document.getElementById('mv_pv').value);
+    let r_input = document.getElementById('mv_r').value;
+    let n = parseFloat(document.getElementById('mv_n').value);
+    let res = "";
+
+    if (r_input === "" && !isNaN(fv) && !isNaN(pv) && !isNaN(n)) {
+        // 1. หา r = ((FV / PV)^(1 / n)) - 1
+        let r_val = Math.pow((fv / pv), (1 / n)) - 1;
+        res = `r = ${(r_val * 100).toFixed(2)}% ต่องวด`;
+
+    } else if (isNaN(fv)) {
+        // 2. หา FV = PV * (1 + r)^n
+        let r = parseFloat(r_input) / 100;
+        res = `FV = ${(pv * Math.pow(1 + r, n)).toFixed(2)}`;
+
+    } else if (isNaN(pv)) {
+        // 3. หา PV = FV / (1 + r)^n
+        let r = parseFloat(r_input) / 100;
+        res = `PV = ${(fv / Math.pow(1 + r, n)).toFixed(2)}`;
+
+    } else if (isNaN(n)) {
+        // 4. หา n = log(FV / PV) / log(1 + r)
+        let r = parseFloat(r_input) / 100;
+        if (r <= 0) {
+            res = "อัตราดอกเบี้ยต้องมากกว่า 0";
+        } else {
+            let n_val = Math.log(fv / pv) / Math.log(1 + r);
+            res = `n = ${n_val.toFixed(2)} งวด`;
+        }
+    }
+
+    showResult(res || "กรุณากรอกข้อมูลให้ครบถ้วนเพื่อหาค่าตัวแปรที่ว่าง");
+}
+
+
+    function showResult(val) {
+        const box = document.getElementById('resultBox');
+        box.style.display = 'block';
+        box.innerText = "ผลลัพธ์: " + val;
+    }
+
+    // --- ระบบแปลงเบรลล์ไทย (พยัญชนะ สระ วรรณยุกต์ และ Nemeth) ---
+
+    const thaiBrailleDict = {
+        // พยัญชนะ
+        'ก': '⠛', 'ข': '⠅','ฃ': '⠴⠅','ค': '⠥','ฅ': '⠤⠥','ฆ': '⠠⠥', 'ง': '⠻', 'จ': '⠚', 'ฉ': '⠌',
+        'ช': '⠬', 'ซ': '⠮','ฌ': '⠠⠬', 'ญ': '⠠⠽', 'ฎ': '⠠⠙', 'ฏ': '⠠⠳', 'ฐ': '⠠⠞', 'ฑ': '⠠⠾',
+        'ฒ': '⠤⠾', 'ณ': '⠠⠝', 'ด': '⠙', 'ต': '⠳', 'ถ': '⠞', 'ท': '⠾','ธ': '⠴⠾', 'น': '⠝','บ': '⠧',
+        'ป': '⠯', 'ผ': '⠏','ฝ': '⠭', 'พ': '⠹', 'ฟ': '⠫','ภ': '⠠⠹',  'ม': '⠍', 'ย': '⠽', 'ร': '⠗',
+        'ล': '⠇', 'ว': '⠺','ศ': '⠠⠎', 'ษ': '⠤⠎','ส': '⠎', 'ห': '⠓','ฬ': '⠠⠇', 'อ': '⠕', 'ฮ': '⠿',
+      
+        // สระ & วรรณยุกต์
+        'ะ': '⠁', 'า': '⠡', 'ิ': '⠃', 'ี': '⠆', 'ุ': '⠉', 'ู': '⠒','ึ': '⠪', 'ื': '⠢', 'เ': '⠋', 'แ': '⠣', 'โ': '⠊',
+        'ใ': '⠱⠂', 'ไ': '⠱','ำ': '⠵', 'ฤ': '⠗⠂', 'ฦ': '⠇⠂','ฯ': '⠰⠆', 'ๆ': '⠂','ฯลฯ': '⠰⠇',
+        '่': '⠔', '้': '⠲', '๊': '⠶', '๋': '⠦', '์': '⠴', 'ั': '⠜', '์': '⠄',
+        // ตัวเลข & สัญลักษณ์
+        '1':'⠂','2':'⠆','3':'⠒','4':'⠲','5':'⠢','6':'⠖','7':'⠶','8':'⠦','9':'⠔','0':'⠴',
+        '+':'⠬','-':'⠤','×':'⠈⠡','÷':'⠨⠌','/':'⠌','√':'⠜','=':'⠨⠅','%':'⠈⠴',
+    };
+
+    function translateFullBraille(text) {
+        let output = "";
+        let isNum = false;
+        for (let char of text) {
+            if (/[0-9]/.test(char)) {
+                if (!isNum) { output += "⠼"; isNum = true; }
+                output += thaiBrailleDict[char] || "";
+            } else {
+                isNum = false;
+                output += thaiBrailleDict[char] || char;
+            }
+        }
+        return output;
+    }
+
+    // --- ระบบ Export PDF ---
+    // ใช้ html2canvas แปลงส่วนแสดงผลเป็นรูปภาพก่อน แล้วจึงใส่ใน PDF
+    async function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const element = document.getElementById('pdf-wrap');
+
+    try {
+        // ใช้ html2canvas แปลง HTML เป็น Canvas (เพิ่ม logging เพื่อดูสถานะ)
+        const canvas = await html2canvas(element, {
+            scale: 2, // เพิ่มความชัด
+            useCORS: true, // รองรับกรณีมีภาพจากภายนอก
+            logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save("braille-export.pdf");
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการสร้าง PDF:", error);
+        alert("ไม่สามารถสร้าง PDF ได้ในขณะนี้");
+    }
+}
+
+    // --- ส่วนแสดงผลหน้าเว็บ ---
+
+    function showResult(val) {
+        const box = document.getElementById('resultBox');
+        box.style.display = 'block';
+        box.innerText = "ผลลัพธ์: " + val;
+    }
+
+    function renderBrailleTool() {
+        document.getElementById('pageContent').innerHTML = `
+            <h3>แปลงโจทย์เป็นอักษรเบรลล์</h3>
+            <textarea id="brailleInput" rows="4" placeholder="พิมพ์ตัวอักษร หรือตัวเลข..." oninput="updateLiveBraille()"></textarea>
+            
+            <div id="pdf-wrap" style="padding: 20px; background: white;">
+                <p style="color: #333; font-weight: bold;">โจทย์:</p>
+                <p id="previewText" style="font-size: 18px;"></p>
+                <p style="color: #333; font-weight: bold;">อักษรเบรลล์:</p>
+                <div class="braille-area" id="brailleOutput" style="background: white; color: black; border: 2px solid #000;">
+                </div>
+            </div>
+            
+            <button class="action-btn" style="margin-top:20px; background:#2980b9;" onclick="exportPDF()">
+                Export to PDF
+            </button>
+        `;
+    }
+
+    function updateLiveBraille() {
+        const input = document.getElementById('brailleInput').value;
+        document.getElementById('previewText').innerText = input;
+        document.getElementById('brailleOutput').innerText = translateFullBraille(input);
+    }
+</script>
+
+</body>
+</html>
